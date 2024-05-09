@@ -1,6 +1,7 @@
 1) cd Front_end
 2) npm install
-3) create .env file and add WEB3STORAGE_TOKEN
+3) create .env file and add
+    Bundler URL and Paymaster API Key(https://docs.biconomy.io/dashboard)
 4) cd ..
 5) cd Back_end
 6) npm install
