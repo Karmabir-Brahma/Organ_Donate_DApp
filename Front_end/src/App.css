@@ -1,0 +1,78 @@
+* {
+    background-color: rgb(187, 226, 236);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+/* .app-container {
+    background-image: url('background_1.png');
+    background-size: cover;
+    background-position: center;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+} */
+
+.App {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 30px;
+    flex-direction: column;
+}
+
+.formStyle {
+    padding: 20px;
+    border: 2px solid black;
+    width: 25%;
+    text-align: center;
+}
+
+.user-table {
+    border: 2px solid black;
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.user-table th,
+.user-table td {
+    border: 2px solid black;
+    padding: 8px;
+    text-align: center;
+}
+
+.user-table th {
+    background-color: #f2f2f2;
+}
+
+button {
+    margin-right: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.container {
+    max-width: 800px;
+    /* Adjust the max-width as needed */
+    margin: 0 auto;
+    padding: 0 15px;
+    /* Add some space on the left and right */
+}
+
+@media (max-width: 600px) {
+
+    .user-table th,
+    .user-table td {
+        font-size: 14px;
+        /* Adjust font size for smaller screens */
+    }
+
+    button {
+        margin-bottom: 5px;
+        /* Add some space between buttons on smaller screens */
+    }
+}
