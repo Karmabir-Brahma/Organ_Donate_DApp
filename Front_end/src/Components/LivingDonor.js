@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { ethers } from "ethers";
 import { useNavigate } from "react-router-dom";
 import { createEthereumContract } from "../Utils/Constants";
 import { SodiumPlus, X25519PublicKey, X25519SecretKey } from "sodium-plus";
@@ -10,34 +11,31 @@ function LivingDonor() {
     const [recipientName, setRecipientName] = useState("");
     const [file, setFile] = useState("");
     const [medFile, setMedFile] = useState("");
+    const [noc, setNoc] = useState("");
     const [donorAddress, setDonorAddress] = useState("");
     const [donorPhnNumber, setDonorPhnNumber] = useState("");
-    const [name, setName] = useState("");
+    const [relationship, setRelationship] = useState("");
     const [uniqueId, setUniqueId] = useState();
+    const [address, setAddress] = useState();
     const [userPubK, setUserPubK] = useState();
     const [userSecK, setUserSecK] = useState();
     const [nonce, setNonce] = useState();
     const [authPubK, setAuthPubK] = useState();
     const navigate = useNavigate();
+    const organList = ['Heart', 'Lung', 'Liver', 'Kidney', 'Pancreas', 'Intestine', 'Skin', 'Cornea'];
+    const [selectedOrgan, setSelectedOrgan] = useState('');
     useEffect(() => {
-        async function getUserData() {
+        async function getUserData(signerAddress) {
             const transactionsContract = await createEthereumContract();
-            const walletAddress = localStorage.getItem("address");
             try {
                 // setAddress
-                const data = await transactionsContract.getCid_DonorAcc(walletAddress);
-                if (data) {
-                    try {
-                        // const response = await fetch(`https://${data}.ipfs.dweb.link/info.json`);
-                        const response = await fetch(`https://bkrgateway.infura-ipfs.io/ipfs/${data}`);
-                        const res = await response.json();
-                        setName(res.name);
-                    } catch (error) {
-                        console.log(error);
-                    }
+                const data = await transactionsContract.get_DonorAcc(signerAddress);
+                console.log("DATA", data);
+                setAddress(signerAddress);
+                if (data[0]) {
                     try {
                         const response = await axios.post("http://localhost:8000/getUserKeys",
-                            { walletAddress });
+                            { signerAddress });
                         if (response.data !== 404) {
                             response.data.nonce = Buffer.from(response.data.nonce);
                             const bufferP = Buffer.from(response.data.publicKey);
@@ -77,10 +75,27 @@ function LivingDonor() {
                     navigate("/Create");
                 }
             } catch (error) {
-                console.log("Error");
+                console.log("Error", error);
             }
         }
-        getUserData();
+
+        const userCheck = async () => {
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            await provider.send("eth_requestAccounts", []);
+            const signer = provider.getSigner();
+            const signerAddress = await signer.getAddress();
+            const transactionsContract = await createEthereumContract();
+            const data = await transactionsContract.get_DonorAcc(signerAddress);
+            console.log("data", data);
+            if (data[0]) {
+                getUserData(signerAddress);
+            }
+            else {
+                console.log("No data was found");
+                navigate("/Create");
+            }
+        }
+        userCheck();
     }, []);
 
     async function handleSubmit(e) {
@@ -110,6 +125,9 @@ function LivingDonor() {
         // Process donor's medical records file
         const medFileBuffer = await processFile(medFile);
 
+        //Process donor's noc
+        const nocBuffer = await processFile(noc);
+
         const type = "Living Donor";
         const uniqueId = Math.floor(Math.random() * Date.now()).toString(36);
         setUniqueId(uniqueId);
@@ -119,7 +137,10 @@ function LivingDonor() {
             recipientName,
             donorAddress,
             donorPhnNumber,
-            uniqueId
+            relationship,
+            selectedOrgan,
+            uniqueId,
+            address
         };
 
         const formDataString = JSON.stringify(formDataObj);
@@ -131,11 +152,14 @@ function LivingDonor() {
         const cipherText2 = await sodium.crypto_box(fileBuffer, nonce, userSecK, authPubK);
         // Encrypt donor's medical records
         const cipherText3 = await sodium.crypto_box(medFileBuffer, nonce, userSecK, authPubK);
+        //Encrypt donor's noc
+        const cipherText4 = await sodium.crypto_box(nocBuffer, nonce, userSecK, authPubK);
         try {
             const res = await axios.post("http://localhost:8000/uploadData", {
                 cipherText,
                 cipherText2,
                 cipherText3,
+                cipherText4,
                 publicKey: userPubK.buffer,
                 nonce,
             });
@@ -197,7 +221,15 @@ function LivingDonor() {
                         onChange={(e) => setDonorPhnNumber(e.target.value)}
                     />
                     <br />
-                    <label className="form-label">Donor's id proof*</label>
+                    <label className="form-label">Relationship with Recipient</label>
+                    <input
+                        type="txet"
+                        className="form-control"
+                        required
+                        onChange={(e) => setRelationship(e.target.value)}
+                    />
+                    <br />
+                    <label className="form-label">Donor's id proof *</label>
                     <input
                         type="file"
                         className="form-control"
@@ -206,7 +238,7 @@ function LivingDonor() {
                         onChange={(e) => setFile(e.target.files[0])}
                     />
                     <br />
-                    <label className="form-label">Donor's Medical Records</label>
+                    <label className="form-label">Donor's Medical Records *</label>
                     <input
                         type="file"
                         className="form-control"
@@ -214,6 +246,26 @@ function LivingDonor() {
                         required
                         onChange={(e) => setMedFile(e.target.files[0])}
                     />
+                    <br />
+                    <label className="form-label">NOC *</label>
+                    <input
+                        type="file"
+                        className="form-control"
+                        accept="application/pdf"
+                        required
+                        onChange={(e) => setNoc(e.target.files[0])}
+                    />
+                    <br />
+                    {/* <label className="form-label">Choose an organ to donate</label> */}
+                    <label className="form-label">Choosen an organ to donate</label>
+                    <br />
+                    <select value={selectedOrgan} required onChange={(e) => setSelectedOrgan(e.target.value)}>
+                        <option value="" disabled hidden>Select an organ</option>
+                        {organList.map((organ, index) => (
+                            <option key={index} value={organ}>{organ}</option>
+                        ))}
+                    </select>
+                    <br />
                     <br />
                     <button className="btn btn-primary" type="submit">
                         Submit

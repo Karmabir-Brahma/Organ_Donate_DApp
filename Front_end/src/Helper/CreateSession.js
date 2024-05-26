@@ -12,6 +12,7 @@ function CreateSession({ smartAccount, address, provider }) {
 
 
     useEffect(() => {
+        console.log("sma", smartAccount);
         let checkSessionModuleEnabled = async () => {
             if (!address || !smartAccount || !provider) {
                 setIsSessionKeyModuleEnabled(false);
@@ -27,7 +28,7 @@ function CreateSession({ smartAccount, address, provider }) {
                 setIsSessionKeyModuleEnabled(isEnabled);
                 return;
             } catch (err) {
-                console.error(err)
+                console.error("Err", err)
                 setIsSessionKeyModuleEnabled(false);
                 return;
             }
@@ -65,7 +66,7 @@ function CreateSession({ smartAccount, address, provider }) {
             console.log("Session Signer(CS)", sessionSigner);
             console.log("Session MOdule(CS)", sessionModule);
             window.localStorage.setItem("sessionSigner", sessionSigner.privateKey);
-            const contractAddress = "0x2f25D868584704754cE786bb887067F1c8683237";
+            const contractAddress = "0xAb17AafE4cE33dC4f5C46C08B42E47547F678c17";
             const functionSelector = 0x9bdc8e15;
             // const functionSelector = hexDataSlice(id("startElection(string,uint)"), 0, 4);
             console.log("Function Selector", functionSelector);
@@ -131,9 +132,9 @@ function CreateSession({ smartAccount, address, provider }) {
                 theme="dark"
             />
             {isSessionKeyModuleEnabled ? (
-                <button onClick={() => createSession(false)}>Create Session</button>
+                <button className="bttn" onClick={() => createSession(false)}>Create Session</button>
             ) : (
-                <button onClick={() => createSession(true)}>
+                <button className="bttn" onClick={() => createSession(true)}>
                     Enable and Create Session
                 </button>
             )}

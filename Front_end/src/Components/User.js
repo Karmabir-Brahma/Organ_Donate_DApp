@@ -19,11 +19,14 @@ function User() {
         async function getUserData(signerAddress) {
             try {
                 // const response = await fetch(`https://${data}.ipfs.dweb.link/info.json`);
-                const response = await fetch(`https://bkrgateway.infura-ipfs.io/ipfs/${data}`);
-                const res = await response.json();
-                setName(res.name);
-                setEmail(res.email);
-                setAddress(res.address);
+                const transactionsContract = await createEthereumContract();
+                const data = await transactionsContract.get_DonorAcc(signerAddress);
+                console.log("Donor Data", data);
+                // const response = await fetch(`https://bkrgateway.infura-ipfs.io/ipfs/${data}`);
+                // const res = await response.json();
+                setName(data[0]);
+                setEmail(data[1]);
+                setAddress(signerAddress);
             } catch (error) {
                 console.log(error);
             }
@@ -57,8 +60,9 @@ function User() {
             const signer = provider.getSigner();
             const signerAddress = await signer.getAddress();
             const transactionsContract = await createEthereumContract();
-            const data = await transactionsContract.getCid_DonorAcc(signerAddress);
-            if (data) {
+            const data = await transactionsContract.get_DonorAcc(signerAddress);
+            console.log("data", data);
+            if (data[0]) {
                 getUserData(signerAddress);
             }
             else {
@@ -95,6 +99,14 @@ function User() {
             }
             else
                 console.log("Internal Server Error");
+
+            const res = await axios.post("http://localhost:8000/uploadUserNonce", {
+                address,
+                nonce
+            });
+            if (res.data !== 500) {
+                console.log("Pub Key Data", res.data);
+            }
         } catch (error) {
             console.log("Error:", error.message);
         }

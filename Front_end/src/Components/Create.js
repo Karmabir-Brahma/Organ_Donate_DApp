@@ -30,11 +30,12 @@ function Create() {
             async function Check() {
                 const provider = new ethers.providers.Web3Provider(window.ethereum);
                 await provider.send("eth_requestAccounts", []);
-                const signer = await signer.getSigner();
+                const signer = provider.getSigner();
                 const signerAddress = await signer.getAddress();
                 const transactionContract = await createEthereumContract();
-                const cid = await transactionContract.getCid_DonorAcc(signerAddress);
-                if (cid) {
+                const cid = await transactionContract.get_DonorAcc(signerAddress);
+                console.log("CID in create", cid);
+                if (cid[0]) {
                     setFormFilled(true);
                 }
                 else {
@@ -63,9 +64,9 @@ function Create() {
 
         try {
             if (window.ethereum) {
-                const provider = await window.ethereum.BrowserProvider(window.ethereum);
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
                 await provider.send("eth_requestAccounts", []);
-                const signer = await provider.getSigner();
+                const signer = provider.getSigner();
                 const smartWallet = await createSmartAccountClient({
                     signer,
                     biconomyPaymasterApiKey: process.env.REACT_APP_BICONOMYPAYMASTERAPIKEY,
@@ -80,7 +81,7 @@ function Create() {
 
                 //Adding cid to Blockchain
                 const transactionsContract = await createEthereumContract();
-                const trx_Hash = await transactionsContract.populateTransaction.setCid_DonorAcc(address, cid.path);
+                const trx_Hash = await transactionsContract.populateTransaction.setCid_DonorAcc(address, name, email);
                 const trx = {
                     to: contractAddress,
                     data: trx_Hash.data

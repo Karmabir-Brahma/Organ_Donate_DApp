@@ -8,7 +8,7 @@ import { create } from 'ipfs-http-client';
 import { Buffer } from 'buffer';
 import axios from "axios";
 import { createEthereumContractVote, contractAddress2 } from "../Utils/Constants2";
-import { createBundler, createSmartAccountClient, PaymasterMode, DEFAULT_SESSION_KEY_MANAGER_MODULE, createSessionKeyManagerModule } from "@biconomy/account";
+import { createSmartAccountClient, PaymasterMode, DEFAULT_SESSION_KEY_MANAGER_MODULE, createSessionKeyManagerModule } from "@biconomy/account";
 
 const projectId = '2PKl9646Eki8bAgSFg97ZsbvbiA';
 const projectSecret = 'eeea96e39915097c927f22f19aad633c';
@@ -23,6 +23,8 @@ const client = create({
     }
 });
 
+const abiSVMAddress = "0x7818f8713Dac316908d6cd57702F5204B187fEaf"
+
 function Admin() {
     const [admin, setAdmin] = useState(false);
     const [showForm, setShowForm] = useState(false);
@@ -31,42 +33,47 @@ function Admin() {
     const [authPubK, setAuthPubK] = useState("");
     const [authSecK, setAuthSecK] = useState("");
     const [userDatas, setUserDatas] = useState([]);
+    const [nonce, setNonce] = useState("");
     let [smartWallet2, setSmartWallet2] = useState("");
     const [provider, setProvider] = useState("");
+    const [address, setDonorAddress] = useState("");
     const [smartWalletAddress2, setSmartWalletAddress2] = useState("");
-    const [bundler, setBundler] = useState("");
-
     const [decryptedPubK, setDecryptedPubK] = useState("");
     const [decryptedSecK, setDecryptedSecK] = useState("");
     const [authName, setAuthName] = useState("");
     const [authEmail, setAuthEmail] = useState("");
     const [authWalletAddress, setAuthWalletAddress] = useState("");
     const [position, setPosition] = useState("");
+    const [idProofBuff, setIdProofBuff] = useState("");
+    const [medProofBuff, setMedProofBuff] = useState("");
+    const [nocProofBuff, setNocProofBuff] = useState("");
+    const [idProofBlob, setIdProofBlob] = useState("");
+    const [medProofBlob, setMedProofBlob] = useState("");
+    const [nocProffBlob, setNocProofBlob] = useState("");
 
     const navigate = useNavigate();
     useEffect(() => {
         const setUp = async () => {
             try {
+                //getting provider and signer
                 const provider = new ethers.providers.Web3Provider(window.ethereum);
                 await provider.send("eth_requestAccounts", []);
                 setProvider(provider);
                 const signer = provider.getSigner();
                 console.log("Signer", signer);
-
+                //creating smart wallet
                 let smartAccount = await createSmartAccountClient({
                     signer,
                     biconomyPaymasterApiKey: process.env.REACT_APP_BICONOMYPAYMASTERAPIKEY,
                     bundlerUrl: process.env.REACT_APP_BUNDLERURL,
                 });
-                const bundler = await createBundler({
-                    bundlerUrl: process.env.REACT_APP_BUNDLERURL
-                });
-                setBundler(bundler);
                 setSmartWallet2(smartAccount);
                 const smartWalletAddress = await smartAccount.getAccountAddress();
                 setSmartWalletAddress2(smartWalletAddress);
                 console.log("Smart Account Address:-", smartWalletAddress);
-                console.log("Second", smartAccount);
+                console.log("Smart Account", smartAccount);
+
+                //fetching the Donor Data
                 const response = await axios.get("http://localhost:8000/getAuthKeys");
                 console.log("RESP", response.data);
                 if (response.data === 404)
@@ -87,24 +94,39 @@ function Admin() {
                         const sodium = await SodiumPlus.auto();
 
                         const patientDatas = retrievedData.map(async (data) => {
+                            console.log("Actual Data:", data);
+                            console.log("Type of Data:", typeof data);
                             const nonce = Buffer.from(data.nonce);
                             const cipherText = Buffer.from(data.cipherText);
                             const cipherText2 = Buffer.from(data.cipherText2);
                             const cipherText3 = Buffer.from(data.cipherText3);
+                            const cipherText4 = Buffer.from(data.cipherText4);
                             const bufferP = Buffer.from(data.publicKey);
                             const patientPubK = new X25519PublicKey(bufferP);
 
                             const decryptedBUff = await sodium.crypto_box_open(cipherText, nonce, secK, patientPubK);
                             const decryptedBUff2 = await sodium.crypto_box_open(cipherText2, nonce, secK, patientPubK); //id proof pdf
                             const decryptedBUff3 = await sodium.crypto_box_open(cipherText3, nonce, secK, patientPubK); //Med Record pdf
+                            const decryptedBUff4 = await sodium.crypto_box_open(cipherText4, nonce, secK, patientPubK); //NOC pdf
 
                             const decryptedObj = JSON.parse(decryptedBUff.toString('utf-8'));
                             console.log("Decrypted Obj", decryptedObj);
+
+                            setDonorAddress(decryptedBUff.address);
                             const pdfBlob2 = new Blob([decryptedBUff2], { type: "application/pdf" });
                             const url2 = URL.createObjectURL(pdfBlob2);
+                            setIdProofBuff(decryptedBUff2);
+                            setIdProofBlob(pdfBlob2);
 
                             const pdfBlob3 = new Blob([decryptedBUff3], { type: "application/pdf" });
                             const url3 = URL.createObjectURL(pdfBlob3);
+                            setMedProofBuff(decryptedBUff3);
+                            setMedProofBlob(pdfBlob3);
+
+                            const pdfBlob4 = new Blob([decryptedBUff4], { type: "application/pdf" });
+                            const url4 = URL.createObjectURL(pdfBlob4);
+                            setNocProofBuff(decryptedBUff4);
+                            setNocProofBlob(pdfBlob4);
                             //Count Time
                             let min = 0;
                             let sec = 0;
@@ -126,8 +148,7 @@ function Admin() {
                                     const checkVoteEnded = await transactionContractVote.checkEndElection(decryptedObj.uniqueId);
                                     let flag = false;
                                     if (!checkVoteEnded) {
-                                        const abiSVMAddress = "0x7818f8713Dac316908d6cd57702F5204B187fEaf"
-                                        // get session key from local storage
+                                        console.log("Inside check vote end");
                                         const sessionKeyPrivKey = window.localStorage.getItem("sessionSigner");
                                         console.log("sessionKeyPrivKey", sessionKeyPrivKey);
                                         if (!sessionKeyPrivKey) {
@@ -136,15 +157,16 @@ function Admin() {
                                         }
                                         const sessionSigner = new ethers.Wallet(sessionKeyPrivKey, provider);
                                         console.log("sessionSigner", sessionSigner);
+
+                                        // generate sessionModule
                                         const sessionModule = await createSessionKeyManagerModule({
                                             moduleAddress: DEFAULT_SESSION_KEY_MANAGER_MODULE,
-                                            smartAccountAddress: smartWalletAddress,
+                                            smartAccountAddress: smartWalletAddress2,
                                         });
                                         console.log("Session Module", sessionModule);
                                         // set active module to sessionModule
                                         console.log("Smart Wallet", smartAccount);
                                         smartAccount = await smartAccount.setActiveValidationModule(sessionModule);
-                                        console.log("Balance", await smartAccount.getBalances());
                                         const endVote = await transactionContractVote.populateTransaction.endElection(decryptedObj.uniqueId);
                                         const tx = {
                                             to: contractAddress2,
@@ -153,46 +175,51 @@ function Admin() {
                                         console.log("Jakayw", tx);
                                         const transactionArray = [];
                                         transactionArray.push(tx);
-                                        let userOp = await smartAccount.buildUserOp(transactionArray, {
-                                            params: {
+                                        try {
+                                            const userOp = await smartAccount.buildUserOp(transactionArray, {
+                                                params: {
+                                                    sessionSigner: sessionSigner,
+                                                    sessionValidationModule: abiSVMAddress,
+                                                },
+                                            });
+                                            console.log("After jakayw");
+                                            const userOpResponse = await smartAccount.sendUserOp(userOp, {
                                                 sessionSigner: sessionSigner,
                                                 sessionValidationModule: abiSVMAddress,
-                                            },
-                                        });
-
-                                        const userOpResponse = await smartAccount.sendUserOp(userOp, {
-                                            sessionSigner: sessionSigner,
-                                            sessionValidationModule: abiSVMAddress,
-                                        });
-                                        console.log("userOpHash", userOpResponse);
-                                        const userOpReceipt = await userOpResponse.wait();
-                                        console.log("txHash", userOpReceipt);
-                                        if (userOpReceipt.success == "true") {
-                                            console.log("User Op Receipt: ", userOpReceipt);
-                                            console.log("Transaction Receipt: ", userOpReceipt.receipt);
-                                            setUserDatas(prevUserDatas => {
-                                                console.log("Konga");
-                                                const updatedUserDatas = prevUserDatas.map(userData => {
-                                                    if (userData.uniqueId === decryptedObj.uniqueId) {
-                                                        flag = true;
-                                                        return {
-                                                            ...userData,
-                                                            disableButton: true,
-                                                            voteEnd: true
-                                                        };
-                                                    }
-                                                    return userData;
-                                                });
-                                                return updatedUserDatas;
                                             });
+                                            console.log("userOpHash", userOpResponse);
+                                            const userOpReceipt = await userOpResponse.wait();
+                                            console.log("txHash", userOpReceipt);
+                                            if (userOpReceipt.success == "true") {
+                                                console.log("Transaction Receipt: ", userOpReceipt.receipt);
+                                                setUserDatas(prevUserDatas => {
+                                                    console.log("Konga");
+                                                    const updatedUserDatas = prevUserDatas.map(async (userData) => {
+                                                        if (userData.uniqueId === decryptedObj.uniqueId) {
+                                                            flag = true;
+                                                            addToIPFS(userData, smartAccount, secK, patientPubK)
+                                                            return {
+                                                                ...userData,
+                                                                disableButton: true,
+                                                                voteEnd: true
+                                                            };
+                                                        }
+                                                        return userData;
+                                                    });
+                                                    return updatedUserDatas;
+                                                });
+                                            }
+                                        } catch (error) {
+                                            console.log("Couldn't end vote", error);
                                         }
                                     }
                                     if (!flag) {
                                         setUserDatas(prevUserDatas => {
                                             console.log("Konga");
-                                            const updatedUserDatas = prevUserDatas.map(userData => {
+                                            const updatedUserDatas = prevUserDatas.map((userData) => {
                                                 if (userData.uniqueId === decryptedObj.uniqueId) {
-                                                    flag = true;
+                                                    console.log("Donor Data", userData);
+                                                    addToIPFS(userData, smartAccount, secK, patientPubK);
                                                     return {
                                                         ...userData,
                                                         disableButton: true,
@@ -234,6 +261,7 @@ function Admin() {
                                 ...decryptedObj,
                                 idProofUrl: url2,
                                 medicalRecordUrl: url3,
+                                nocUrl: url4,
                                 minutes: min,
                                 seconds: sec,
                                 disableButton: false,
@@ -246,7 +274,9 @@ function Admin() {
 
                         const pData = await Promise.all(patientDatas);
                         console.log("DATA", pData);
+                        console.log("HGJH", pData);
                         setUserDatas(pData);
+                        startVote(pData, smartAccount);
                     } else if (res.status === 404) {
                         console.log("Data not found");
                     } else {
@@ -278,6 +308,154 @@ function Admin() {
         adminCheck();
     }, []);
 
+    async function addToIPFS(userData, smartWallet2, secK, patientPubK) {
+        try {
+            const uniqueId = userData.uniqueId;
+            const transactionContract = await createEthereumContract();
+            const transactionContractVote = await createEthereumContractVote();
+            const approvedVotes = await transactionContractVote.approveVotes(uniqueId);
+            //Setting the sessionKeySigner
+            const sessionKeyPrivKey = window.localStorage.getItem("sessionSigner");
+            console.log("sessionKeyPrivKey", sessionKeyPrivKey);
+            if (!sessionKeyPrivKey) {
+                alert("Session key not found please create session");
+                return;
+            }
+            const sessionSigner = new ethers.Wallet(sessionKeyPrivKey, provider);
+            console.log("sessionSigner", sessionSigner);
+
+            // generate sessionModule
+            const sessionModule = await createSessionKeyManagerModule({
+                moduleAddress: DEFAULT_SESSION_KEY_MANAGER_MODULE,
+                smartAccountAddress: smartWalletAddress2,
+            });
+            console.log("Session Module", sessionModule);
+            // set active module to sessionModule
+            console.log("Smart Wallet", smartWallet2);
+            smartWallet2 = await smartWallet2.setActiveValidationModule(sessionModule);
+
+            const threshold = await transactionContract.minimumThreshold(approvedVotes);
+            console.log("Threshold type", typeof threshold);
+            //Check the minimum threshold required
+            if (!threshold) {
+                console.log("Inside threshold");
+                const donorRegsData = {
+                    donorName: userData.donorName,
+                    donorAddress: userData.donorAddress,
+                    donorPhnNumber: userData.donorPhnNumber,
+                    donorUniqueId: userData.uniqueId,
+                    idProofBuff: idProofBuff,
+                    idProofBolb: idProofBlob,
+                    medProofBuff: medProofBuff,
+                    medProofBolb: medProofBlob,
+                    recipientName: userData.recipientName,
+                    recipientRelation: userData.receiptRelation,
+                    typeOfDonation: userData.type,
+                    approveStatus: "success"
+                }
+                const donorRegsDataString = JSON.stringify(donorRegsData);
+                const res = await axios.post("http://localhost:8000/getUserNonce", {
+                    address
+                });
+                if (res.status == 200) {
+                    console.log("Fetched nonce", res.data);
+                    const retrievedData = res.data;
+                    setNonce(retrievedData.nonce);
+                }
+                else if (res.status == 404) {
+                    console.log("Nonce not found");
+                }
+                else {
+                    console.log("Internal Server Error");
+                }
+                const sodium = await SodiumPlus.auto();
+                console.log("Nonce", nonce);
+                const cipherText = await sodium.crypto_box(donorRegsDataString, nonce, secK, patientPubK);
+                console.log("Cipher", cipherText);
+                console.log("Type of ciphertest", typeof cipherText);
+                const blob = new Blob([JSON.stringify(cipherText)], { type: 'application/json' });
+                const cid = await client.add(blob);
+                console.log("CID of Donor Registration:", cid.path);
+                const trxDataStorage = await createEthereumContract();
+                const storeIPFS = await trxDataStorage.populateTransaction.donorStoreIPFS(uniqueId, cid.path);
+                const trx = {
+                    to: contractAddress,
+                    data: storeIPFS.data
+                }
+                console.log("Jakayw", trx);
+                const transactionArray = [];
+                transactionArray.push(trx);
+                const userOp = await smartWallet2.buildUserOp(transactionArray, {
+                    params: {
+                        sessionSigner: sessionSigner,
+                        sessionValidationModule: abiSVMAddress,
+                    },
+                });
+
+                const userOpResponse = await smartWallet2.sendUserOp(userOp, {
+                    sessionSigner: sessionSigner,
+                    sessionValidationModule: abiSVMAddress,
+                });
+                console.log("Store IPFS userOp", userOpResponse);
+                const userOpReceipt = await userOpResponse.wait();
+                console.log("Strore IPFS userOPReceipt", userOpReceipt);
+                if (userOpReceipt.success == "true") {
+                    const approved = await trxDataStorage.populateTransaction.setStatus(uniqueId, true);
+                    const trx = {
+                        to: contractAddress,
+                        data: approved.data
+                    }
+                    console.log("Jakayw", trx);
+                    const transactionArray = [trx];
+                    const userOp2 = await smartWallet2.sendTranscation(transactionArray, {
+                        params: {
+                            sessionSigner: sessionSigner,
+                            sessionValidationModule: abiSVMAddress,
+                        }
+                    });
+                    console.log("Approved userOP2", userOp2);
+                    const userOp2Receipt = await userOp2.wait();
+                    console.log("Approved userOp2Receipt", userOp2Receipt);
+                    if (userOp2Receipt.success == "true") {
+                        console.log("Assign approved");
+                    }
+                    else {
+                        console.log("Couldn't assign approved");
+                    }
+                }
+                else {
+                    console.log("COULDN'T STORE IN IPFS");
+                }
+            }
+            else {
+                const trxDataStorage = await createEthereumContract();
+                const rejected = await trxDataStorage.populateTransaction.setStatus(uniqueId, false);
+                const trx = {
+                    to: contractAddress,
+                    data: rejected.data
+                }
+                console.log("Jakayw", trx);
+                const transactionArray = [trx];
+                const userOp = await smartWallet2.sendTranscation(transactionArray, {
+                    params: {
+                        sessionSigner: sessionSigner,
+                        sessionValidationModule: abiSVMAddress,
+                    }
+                });
+                const userOpReceipt = await userOp.wait();
+                console.log("Approved userOp2Receipt", userOpReceipt);
+                if (userOpReceipt.success == "true") {
+                    console.log("REJECT DONE");
+                }
+                else {
+                    console.log("REVERTED in REJECTED");
+                }
+            }
+        } catch (error) {
+            console.log("Error in IPFS store", error);
+        }
+    }
+
     async function addAuthorizer() {
         setShowForm(true);
     }
@@ -299,25 +477,9 @@ function Admin() {
                 console.log("CID", cid);
 
                 const transactionContract = await createEthereumContract();
-                const trx_Hash = await transactionContract.setCid_AuthAcc.populateTransaction(authWalletAddress, cid.path);
-                const tx = {
-                    to: contractAddress,
-                    data: trx_Hash.data
-                }
-                const userOpResponse = await smartWallet2.sendTranscation(tx, {
-                    paymasterServiceData: { mode: PaymasterMode.SPONSORED }
-                });
-                const { transactionHash } = await userOpResponse.waitForTxHash();
-                console.log("Trx hah", transactionHash);
-                const userOpReceipt = await userOpResponse.wait();
-                if (userOpReceipt.success == "true") {
-                    console.log("User Op Receipt", userOpReceipt);
-                    console.log("Receipt", userOpReceipt.receipt);
-                }
-                setAuthName("");
-                setAuthEmail("");
-                setPosition("");
-                setAuthWalletAddress("");
+                const trx_Hash = await transactionContract.setCid_AuthAcc(authWalletAddress, cid.path);
+                await trx_Hash.wait();
+                console.log("Authorizer added", trx_Hash.hash);
             }
             else {
                 console.log("No Wallet Detected");
@@ -415,6 +577,7 @@ function Admin() {
 
     function idPDF(idProofUrl) {
         if (idProofUrl) {
+            console.log("ID proof", idProofUrl);
             window.open(idProofUrl, "_blank");
         } else {
             console.log("No ID proof available.");
@@ -429,106 +592,93 @@ function Admin() {
         }
     }
 
-    async function startVote(uniqueId) {
-        const abiSVMAddress = "0x7818f8713Dac316908d6cd57702F5204B187fEaf"
-        // get session key from local storage
-        const sessionKeyPrivKey = window.localStorage.getItem("sessionSigner");
-        console.log("sessionKeyPrivKey", sessionKeyPrivKey);
-        if (!sessionKeyPrivKey) {
-            alert("Session key not found please create session");
-            return;
+    function nocPDF(nocUrl) {
+        if (nocUrl) {
+            window.open(nocUrl, "_blank");
         }
-        const sessionSigner = new ethers.Wallet(sessionKeyPrivKey, provider);
-        console.log("sessionSigner", sessionSigner);
+        else {
+            console.log("No NOC provided");
+        }
+    }
 
-        // generate sessionModule
-        const sessionModule = await createSessionKeyManagerModule({
-            moduleAddress: DEFAULT_SESSION_KEY_MANAGER_MODULE,
-            smartAccountAddress: smartWalletAddress2,
-        });
-        console.log("Session Module", sessionModule);
-        // set active module to sessionModule
-        console.log("Smart Wallet", smartWallet2);
-        smartWallet2 = await smartWallet2.setActiveValidationModule(sessionModule);
-        console.log("Balance", await smartWallet2.getBalances());
-        const transactionContractVote = await createEthereumContractVote();
-        const startTime = Date.now();
-        const { data } = await transactionContractVote.populateTransaction.startElection(uniqueId, startTime);
-        const tx = {
-            to: contractAddress2,
-            data: data,
-        };
-        // const dummmySig = await smartWallet2.getDummySignatures({
-        //     sessionSigner: sessionSigner,
-        //     sessionValidationModule: abiSVMAddress,
-        // });
-        // console.log("Dummy Sig", dummmySig);
+    async function startVote(donorData, smartWallet2) {
+        donorData.map(async (donordata) => {
+            if (!donordata.voteStarted && !donordata.voteEnd) {
+                const uniqueId = donordata.uniqueId;
+                console.log("NOSON", uniqueId);
+                // get session key from local storage
+                const sessionKeyPrivKey = window.localStorage.getItem("sessionSigner");
+                console.log("sessionKeyPrivKey", sessionKeyPrivKey);
+                if (!sessionKeyPrivKey) {
+                    alert("Session key not found please create session");
+                    return;
+                }
+                const sessionSigner = new ethers.Wallet(sessionKeyPrivKey, provider);
+                console.log("sessionSigner", sessionSigner);
 
-
-        console.log("Jakayw");
-        const transactionArray = [];
-        transactionArray.push(tx);
-
-        // const bundler = await createBundler({
-        //     bundlerUrl: process.env.REACT_APP_BUNDLERURL2
-        // })
-        // const gasEstimate = await bundler.estimateUserOpGas({
-        //     initCode: "0x",
-        //     nonce: "0x14",
-        //     sender: "0x15062E0e6c30014e166CC3b7db3e3D700b055C29",
-        //     signature: "0x00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000001c5b32f37f5bea87bdd5374eb2ac54ea8e0000000000000000000000000000000000000000000000000000000000000041584cd957baddf5e10819ea26afac00a3d98ee0ca36d1293ab21096b06bbee30262409957b0880a2901e21a36e601396a2b2937e834feccb988c911c780fb19a31b00000000000000000000000000000000000000000000000000000000000000",
-        //     paymasterAndData: "0x",
-        //     callData: "0x0000189a000000000000000000000000000002fbffedd9b33f4e7156f2de8d48945e74890000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000247cb64759f87038f5145789a3852b70eb26b9c50cb224cf32d82cd828261e0991683b75dd00000000000000000000000000000000000000000000000000000000"
-        // });
-        // console.log("Gas", gasEstimate);
-
-        let userOp = await smartWallet2.buildUserOp(transactionArray, {
-            params: {
-                sessionSigner: sessionSigner,
-                sessionValidationModule: abiSVMAddress,
-            },
-        });
-        console.log("User Op", userOp);
-
-        const userOpResponse = await smartWallet2.sendUserOp(userOp, {
-            sessionSigner: sessionSigner,
-            sessionValidationModule: abiSVMAddress,
-        });
-        console.log("userOpHash", userOpResponse);
-        const userOpReceipt = await userOpResponse.wait(1);
-        console.log("txHash", userOpReceipt);
-
-        // const userOpResponse = await smartWallet2.sendTransaction(transactionArray, {
-        //     params: {
-        //         sessionSigner: sessionSigner,
-        //         sessionValidationModule: abiSVMAddress,
-        //     },
-        // });
-        // console.log("Partial", userOpResponse);
-        // const { transactionHash } = await userOpResponse.waitForTxHash();
-        // console.log("Start Election Trx hash", transactionHash);
-        // console.log("UniqueID", uniqueId);
-        // const userOpReceipt = await userOpResponse.wait();
-        // console.log("Receipt", userOpReceipt);
-        if (userOpReceipt.success == "true") {
-            console.log("User Op Receipt", userOpReceipt);
-            console.log("Transaction Receipt", userOpReceipt.receipt);
-            setUserDatas(prevUserDatas => {
-                const updatedUserDatas = prevUserDatas.map(userData => {
-                    console.log("Data UID", userData.uniqueId);
-                    console.log("UID", uniqueId);
-                    if (userData.uniqueId == uniqueId) {
-                        return {
-                            ...userData,
-                            voteStarted: true
-                        }
-                    }
+                // generate sessionModule
+                const sessionModule = await createSessionKeyManagerModule({
+                    moduleAddress: DEFAULT_SESSION_KEY_MANAGER_MODULE,
+                    smartAccountAddress: smartWalletAddress2,
                 });
-                return updatedUserDatas;
-            })
-        }
-        else
-            console.log("REVERTED");
+                console.log("Session Module", sessionModule);
+                // set active module to sessionModule
+                console.log("Smart Wallet", smartWallet2);
+                smartWallet2 = await smartWallet2.setActiveValidationModule(sessionModule);
+                console.log("Balance", await smartWallet2.getBalances());
+                const transactionContractVote = await createEthereumContractVote();
+                const startTime = Date.now();
+                const { data } = await transactionContractVote.populateTransaction.startElection(uniqueId, startTime);
+                const tx = {
+                    to: contractAddress2,
+                    data: data,
+                };
+
+                console.log("Jakayw");
+                const transactionArray = [];
+                transactionArray.push(tx);
+                try {
+                    let userOp = await smartWallet2.buildUserOp(transactionArray, {
+                        params: {
+                            sessionSigner: sessionSigner,
+                            sessionValidationModule: abiSVMAddress,
+                        },
+                    });
+                    console.log("User Op", userOp);
+
+                    const userOpResponse = await smartWallet2.sendUserOp(userOp, {
+                        sessionSigner: sessionSigner,
+                        sessionValidationModule: abiSVMAddress,
+                    });
+
+                    console.log("userOpHash", userOpResponse);
+                    const userOpReceipt = await userOpResponse.wait();
+                    console.log("txHash", userOpReceipt);
+
+                    if (userOpReceipt.success == "true") {
+                        console.log("User Op Receipt", userOpReceipt);
+                        console.log("Transaction Receipt", userOpReceipt.receipt);
+                        setUserDatas(prevUserDatas => {
+                            const updatedUserDatas = prevUserDatas.map(userData => {
+                                console.log("Data UID", userData.uniqueId);
+                                console.log("UID", uniqueId);
+                                if (userData.uniqueId == uniqueId) {
+                                    return {
+                                        ...userData,
+                                        voteStarted: true
+                                    }
+                                }
+                            });
+                            return updatedUserDatas;
+                        })
+                    }
+                    else
+                        console.log("REVERTED");
+                } catch (error) {
+                    console.log("Could start vote", error);
+                }
+            }
+        })
     }
 
     const over = (
@@ -553,6 +703,8 @@ function Admin() {
                     {authKeys ? (<button className="bttn" style={{ marginLeft: '5px' }} onClick={genAuthKeys}>Generate Authorizer Keys</button>) : (<button className="bttn" style={{ marginLeft: '5px' }} onClick={showAuthKeys}>Show Authorizer Keys</button>)}
                     {showForm && formCreate}
                     {showKeys && displayKeys}
+                    <br />
+                    <br />
                     <CreateSession smartAccount={smartWallet2} address={smartWalletAddress2} provider={provider} />
                     <table className="user-table">
                         <thead>
@@ -560,11 +712,13 @@ function Admin() {
                                 <th>Type</th>
                                 <th>Donor Name</th>
                                 <th>Recipient Name</th>
-                                <th>Address</th>
+                                <th>Reltion with Donor</th>
+                                <th>Organ</th>
+                                <th>Donor's Address</th>
                                 <th>Phone Number</th>
                                 <th>Donor's Id Proof</th>
                                 <th>Donor's Medical Record</th>
-                                <th>Start Vote</th>
+                                <th>Donor's NOC</th>
                                 <th>Time</th>
                             </tr>
                         </thead>
@@ -574,11 +728,13 @@ function Admin() {
                                     <td>{patientData.type}</td>
                                     <td>{patientData.donorName}</td>
                                     <td>{patientData.recipientName}</td>
+                                    <td>{patientData.relationship}</td>
+                                    <td>{patientData.selectedOrgan}</td>
                                     <td>{patientData.donorAddress}</td>
                                     <td>{patientData.donorPhnNumber}</td>
                                     <td><button onClick={() => idPDF(patientData.idProofUrl)}>View Id proof</button></td>
                                     <td><button onClick={() => medPDF(patientData.medicalRecordUrl)}>View Medical Data</button></td>
-                                    <td><button disabled={patientData.disableButton} onClick={() => startVote(patientData.uniqueId)} >Start Vote</button></td>
+                                    <td><button onClick={() => nocPDF(patientData.nocUrl)}>View NOC</button></td>
                                     <td>{patientData.voteStarted ? (patientData.voteEnd ? over : timer(patientData.minutes, patientData.seconds)) : (notStarted)}</td>
                                 </tr>
                             ))}

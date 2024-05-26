@@ -40,7 +40,12 @@
                 },
                 {
                     "internalType": "string",
-                    "name": "_cid",
+                    "name": "_name",
+                    "type": "string"
+                },
+                {
+                    "internalType": "string",
+                    "name": "_email",
                     "type": "string"
                 }
             ],
@@ -109,12 +114,41 @@
             "inputs": [
                 {
                     "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "name": "donorAcc",
+            "outputs": [
+                {
+                    "internalType": "string",
+                    "name": "_name",
+                    "type": "string"
+                },
+                {
+                    "internalType": "string",
+                    "name": "_email",
+                    "type": "string"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "address",
                     "name": "_address",
                     "type": "address"
                 }
             ],
-            "name": "getCid_AuthAcc",
+            "name": "get_DonorAcc",
             "outputs": [
+                {
+                    "internalType": "string",
+                    "name": "",
+                    "type": "string"
+                },
                 {
                     "internalType": "string",
                     "name": "",
@@ -132,7 +166,7 @@
                     "type": "address"
                 }
             ],
-            "name": "getCid_DonorAcc",
+            "name": "getCid_AuthAcc",
             "outputs": [
                 {
                     "internalType": "string",

@@ -5,6 +5,7 @@ import bodyParser from "body-parser";
 import mongoose from "mongoose";
 import userData from "./db/userData.js"
 import userKeys from "./db/userKeys.js";
+import userNonce from "./db/userNonce.js";
 import authKeys from "./db/authKeys.js";
 import authPubKey from "./db/authPubKey.js";
 
@@ -36,10 +37,23 @@ try {
         }
     });
 
+    app.post('/uploadUserNonce', async (req, res) => {
+        const { address, nonce } = req.body;
+        try {
+            const savedKeys = await userNonce.create({
+                address,
+                nonce,
+            });
+            res.json(savedKeys);
+        } catch (error) {
+            res.json(500);
+        }
+    })
+
     app.post('/getUserKeys', async (req, res) => {
         try {
-            const { walletAddress } = req.body;
-            const address = walletAddress;
+            const { signerAddress } = req.body;
+            const address = signerAddress;
             const keys = await userKeys.findOne({ address });
             if (keys)
                 res.json(keys);
@@ -50,6 +64,20 @@ try {
             console.log("Error", error);
         }
     });
+
+    app.post('/getUserNonce', async (req, res) => {
+        try {
+            const { address } = req.body;
+            const nonce = await userNonce.findOne({ address });
+            if (nonce)
+                res.json(nonce);
+            else
+                res.json(404);
+        } catch (error) {
+            res.json(500)
+            console.log("Error", error);
+        }
+    })
 
     app.post('/uploadAuthKeys', async (req, res) => {
         const { publicKey, privateKey } = req.body;
@@ -103,12 +131,13 @@ try {
     })
 
     app.post("/uploadData", async (req, res) => {
-        const { cipherText, cipherText2, cipherText3, publicKey, nonce, sentTime } = req.body;
+        const { cipherText, cipherText2, cipherText3, cipherText4, publicKey, nonce, sentTime } = req.body;
         try {
             const savedData = await userData.create({
                 cipherText,
                 cipherText2,
                 cipherText3,
+                cipherText4,
                 publicKey,
                 nonce,
                 sentTime

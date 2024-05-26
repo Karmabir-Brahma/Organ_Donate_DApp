@@ -1,7 +1,7 @@
 import abi from "./ContractAbi2.json";
 import { ethers } from "ethers";
 
-export const contractAddress2 = "0x2f25D868584704754cE786bb887067F1c8683237";
+export const contractAddress2 = "0xAb17AafE4cE33dC4f5C46C08B42E47547F678c17";
 const contractAbi = abi.abi;
 export async function createEthereumContractVote() {
     try {
