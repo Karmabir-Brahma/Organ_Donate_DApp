@@ -5,6 +5,7 @@ const userDATA = new mongoose.Schema({
     cipherText2: Buffer,
     cipherText3: Buffer,
     cipherText4: Buffer,
+    cipherText5: Buffer,
     publicKey: Buffer,
     nonce: Buffer,
     sentTime: Number,

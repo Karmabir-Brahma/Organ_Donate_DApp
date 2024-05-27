@@ -13,4 +13,4 @@ const userNonce = new mongoose.Schema({
     nonce: Buffer
 });
 
-export default mongoose.model("userPubKey", userNonce);
+export default mongoose.model("userNonce", userNonce);

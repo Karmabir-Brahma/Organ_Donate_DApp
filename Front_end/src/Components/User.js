@@ -105,7 +105,7 @@ function User() {
                 nonce
             });
             if (res.data !== 500) {
-                console.log("Pub Key Data", res.data);
+                console.log("Stored Nonce", res.data);
             }
         } catch (error) {
             console.log("Error:", error.message);
@@ -130,7 +130,7 @@ function User() {
             <div className="App">
                 <div>
                     <button className="bttn" onClick={(e) => navigate("/LivingDonor")}>Living Donor</button>
-                    <button className="bttn" style={{ marginLeft: '5px' }}>Brain Death Donor</button>
+                    <button className="bttn" onClick={(e) => navigate("/BrainDeathDonor")} style={{ marginLeft: '5px' }}>Brain Death Donor</button>
                 </div>
                 <br />
                 {generateKeys ? (<button className="bttn" onClick={genKeys}>Generate Keys</button>) : (<button className="bttn" onClick={showKeys}>Show Keys</button>)}

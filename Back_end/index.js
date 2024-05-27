@@ -40,11 +40,11 @@ try {
     app.post('/uploadUserNonce', async (req, res) => {
         const { address, nonce } = req.body;
         try {
-            const savedKeys = await userNonce.create({
+            const savedNonce = await userNonce.create({
                 address,
                 nonce,
             });
-            res.json(savedKeys);
+            res.json(savedNonce);
         } catch (error) {
             res.json(500);
         }
@@ -131,13 +131,14 @@ try {
     })
 
     app.post("/uploadData", async (req, res) => {
-        const { cipherText, cipherText2, cipherText3, cipherText4, publicKey, nonce, sentTime } = req.body;
+        const { cipherText, cipherText2, cipherText3, cipherText4, cipherText5, publicKey, nonce, sentTime } = req.body;
         try {
             const savedData = await userData.create({
                 cipherText,
                 cipherText2,
                 cipherText3,
                 cipherText4,
+                cipherText5,
                 publicKey,
                 nonce,
                 sentTime

@@ -5,6 +5,7 @@ import Create from "./Components/Create";
 import Admin from "./Components/Admin";
 import Authorizer from "./Components/Authorizer";
 import LivingDonor from "./Components/LivingDonor";
+import BrainDeathDonor from "./Components/BrainDeathDonor";
 import Error from "./Helper/Error";
 import "./App.css";
 
@@ -18,6 +19,7 @@ function App() {
                     <Route path="/Create" element={<Create />}></Route>
                     <Route path="/Authorizer" element={<Authorizer />}></Route>
                     <Route path="/LivingDonor" element={<LivingDonor />}></Route>
+                    <Route path="/BrainDeathDonor" element={<BrainDeathDonor />}></Route>
                     <Route path="/Admin" element={<Admin />}></Route>
                     <Route path="/Error" element={<Error />}></Route>
                 </Routes>

@@ -8,7 +8,7 @@ import { create } from 'ipfs-http-client';
 import { Buffer } from 'buffer';
 import axios from "axios";
 import { createEthereumContractVote, contractAddress2 } from "../Utils/Constants2";
-import { createSmartAccountClient, PaymasterMode, DEFAULT_SESSION_KEY_MANAGER_MODULE, createSessionKeyManagerModule } from "@biconomy/account";
+import { createSmartAccountClient, DEFAULT_SESSION_KEY_MANAGER_MODULE, createSessionKeyManagerModule } from "@biconomy/account";
 
 const projectId = '2PKl9646Eki8bAgSFg97ZsbvbiA';
 const projectSecret = 'eeea96e39915097c927f22f19aad633c';
@@ -36,7 +36,6 @@ function Admin() {
     const [nonce, setNonce] = useState("");
     let [smartWallet2, setSmartWallet2] = useState("");
     const [provider, setProvider] = useState("");
-    const [address, setDonorAddress] = useState("");
     const [smartWalletAddress2, setSmartWalletAddress2] = useState("");
     const [decryptedPubK, setDecryptedPubK] = useState("");
     const [decryptedSecK, setDecryptedSecK] = useState("");
@@ -50,6 +49,8 @@ function Admin() {
     const [idProofBlob, setIdProofBlob] = useState("");
     const [medProofBlob, setMedProofBlob] = useState("");
     const [nocProffBlob, setNocProofBlob] = useState("");
+    const [bsdcProofBuff, setBsdcProofBuff] = useState("");
+    const [bsdcProofBlob, setBsdcProofBlob] = useState("");
 
     const navigate = useNavigate();
     useEffect(() => {
@@ -111,8 +112,17 @@ function Admin() {
 
                             const decryptedObj = JSON.parse(decryptedBUff.toString('utf-8'));
                             console.log("Decrypted Obj", decryptedObj);
+                            let url5;
+                            if (decryptedObj.type == "Brain Death Donor") {
+                                const cipherText5 = Buffer.from(data.cipherText5);
+                                const decryptedBUff5 = await sodium.crypto_box_open(cipherText5, nonce, secK, patientPubK);
+                                const pdfBlob5 = new Blob([decryptedBUff5], { type: "application/pdf" });
+                                url5 = URL.createObjectURL(pdfBlob5);
+                                setBsdcProofBuff(decryptedBUff5);
+                                setBsdcProofBlob(pdfBlob5);
+                            }
 
-                            setDonorAddress(decryptedBUff.address);
+                            const address = decryptedObj.address;
                             const pdfBlob2 = new Blob([decryptedBUff2], { type: "application/pdf" });
                             const url2 = URL.createObjectURL(pdfBlob2);
                             setIdProofBuff(decryptedBUff2);
@@ -147,6 +157,7 @@ function Admin() {
                                     console.log("Inside timeOut:", data);
                                     const checkVoteEnded = await transactionContractVote.checkEndElection(decryptedObj.uniqueId);
                                     let flag = false;
+                                    console.log("CHECK end", checkVoteEnded);
                                     if (!checkVoteEnded) {
                                         console.log("Inside check vote end");
                                         const sessionKeyPrivKey = window.localStorage.getItem("sessionSigner");
@@ -161,12 +172,12 @@ function Admin() {
                                         // generate sessionModule
                                         const sessionModule = await createSessionKeyManagerModule({
                                             moduleAddress: DEFAULT_SESSION_KEY_MANAGER_MODULE,
-                                            smartAccountAddress: smartWalletAddress2,
+                                            smartAccountAddress: smartWalletAddress, //not avaiable
                                         });
                                         console.log("Session Module", sessionModule);
                                         // set active module to sessionModule
                                         console.log("Smart Wallet", smartAccount);
-                                        smartAccount = await smartAccount.setActiveValidationModule(sessionModule);
+                                        smartAccount = smartAccount.setActiveValidationModule(sessionModule);
                                         const endVote = await transactionContractVote.populateTransaction.endElection(decryptedObj.uniqueId);
                                         const tx = {
                                             to: contractAddress2,
@@ -197,11 +208,15 @@ function Admin() {
                                                     const updatedUserDatas = prevUserDatas.map(async (userData) => {
                                                         if (userData.uniqueId === decryptedObj.uniqueId) {
                                                             flag = true;
-                                                            addToIPFS(userData, smartAccount, secK, patientPubK)
+                                                            addToIPFS(userData, smartAccount, secK, patientPubK, smartWalletAddress, address, provider)
                                                             return {
                                                                 ...userData,
                                                                 disableButton: true,
-                                                                voteEnd: true
+                                                                voteEnd: true,
+                                                                idProofUrl: null,
+                                                                medicalRecordUrl: null,
+                                                                nocUrl: null,
+                                                                bscUrl: null
                                                             };
                                                         }
                                                         return userData;
@@ -218,12 +233,16 @@ function Admin() {
                                             console.log("Konga");
                                             const updatedUserDatas = prevUserDatas.map((userData) => {
                                                 if (userData.uniqueId === decryptedObj.uniqueId) {
-                                                    console.log("Donor Data", userData);
-                                                    addToIPFS(userData, smartAccount, secK, patientPubK);
+                                                    console.log("Donor Address", address);
+                                                    addToIPFS(userData, smartAccount, secK, patientPubK, smartWalletAddress, address, provider);
                                                     return {
                                                         ...userData,
                                                         disableButton: true,
-                                                        voteEnd: true
+                                                        voteEnd: true,
+                                                        idProofUrl: null,
+                                                        medicalRecordUrl: null,
+                                                        nocUrl: null,
+                                                        bscUrl: null
                                                     };
                                                 }
                                                 return userData;
@@ -262,6 +281,7 @@ function Admin() {
                                 idProofUrl: url2,
                                 medicalRecordUrl: url3,
                                 nocUrl: url4,
+                                bscUrl: url5,
                                 minutes: min,
                                 seconds: sec,
                                 disableButton: false,
@@ -276,7 +296,7 @@ function Admin() {
                         console.log("DATA", pData);
                         console.log("HGJH", pData);
                         setUserDatas(pData);
-                        startVote(pData, smartAccount);
+                        startVote(pData, smartAccount, smartWalletAddress, provider);
                     } else if (res.status === 404) {
                         console.log("Data not found");
                     } else {
@@ -308,148 +328,187 @@ function Admin() {
         adminCheck();
     }, []);
 
-    async function addToIPFS(userData, smartWallet2, secK, patientPubK) {
+    async function addToIPFS(userData, smartWallet2, secK, patientPubK, smartWalletAddress, address, provider) {
         try {
             const uniqueId = userData.uniqueId;
             const transactionContract = await createEthereumContract();
             const transactionContractVote = await createEthereumContractVote();
-            const approvedVotes = await transactionContractVote.approveVotes(uniqueId);
-            //Setting the sessionKeySigner
-            const sessionKeyPrivKey = window.localStorage.getItem("sessionSigner");
-            console.log("sessionKeyPrivKey", sessionKeyPrivKey);
-            if (!sessionKeyPrivKey) {
-                alert("Session key not found please create session");
-                return;
-            }
-            const sessionSigner = new ethers.Wallet(sessionKeyPrivKey, provider);
-            console.log("sessionSigner", sessionSigner);
+            const checkVoteEnded = await transactionContractVote.checkStartElection(uniqueId);
+            const checkStartElection = await transactionContractVote.checkEndElection(uniqueId);
+            const checkIPFSStatus = await transactionContract.isApproved(uniqueId);
+            if (checkStartElection && checkVoteEnded && !checkIPFSStatus) {
+                const approvedVotes = await transactionContractVote.approveVotes(uniqueId);
+                //Setting the sessionKeySigner
+                const sessionKeyPrivKey = window.localStorage.getItem("sessionSigner");
+                console.log("sessionKeyPrivKey", sessionKeyPrivKey);
+                if (!sessionKeyPrivKey) {
+                    alert("Session key not found please create session");
+                    return;
+                }
+                const sessionSigner = new ethers.Wallet(sessionKeyPrivKey, provider);
+                console.log("sessionSigner", sessionSigner);
 
-            // generate sessionModule
-            const sessionModule = await createSessionKeyManagerModule({
-                moduleAddress: DEFAULT_SESSION_KEY_MANAGER_MODULE,
-                smartAccountAddress: smartWalletAddress2,
-            });
-            console.log("Session Module", sessionModule);
-            // set active module to sessionModule
-            console.log("Smart Wallet", smartWallet2);
-            smartWallet2 = await smartWallet2.setActiveValidationModule(sessionModule);
+                // generate sessionModule
+                const sessionModule = await createSessionKeyManagerModule({
+                    moduleAddress: DEFAULT_SESSION_KEY_MANAGER_MODULE,
+                    smartAccountAddress: smartWalletAddress,
+                });
+                console.log("Session Module", sessionModule);
+                // set active module to sessionModule
+                console.log("Smart Wallet", smartWallet2);
+                smartWallet2 = await smartWallet2.setActiveValidationModule(sessionModule);
 
-            const threshold = await transactionContract.minimumThreshold(approvedVotes);
-            console.log("Threshold type", typeof threshold);
-            //Check the minimum threshold required
-            if (!threshold) {
-                console.log("Inside threshold");
-                const donorRegsData = {
-                    donorName: userData.donorName,
-                    donorAddress: userData.donorAddress,
-                    donorPhnNumber: userData.donorPhnNumber,
-                    donorUniqueId: userData.uniqueId,
-                    idProofBuff: idProofBuff,
-                    idProofBolb: idProofBlob,
-                    medProofBuff: medProofBuff,
-                    medProofBolb: medProofBlob,
-                    recipientName: userData.recipientName,
-                    recipientRelation: userData.receiptRelation,
-                    typeOfDonation: userData.type,
-                    approveStatus: "success"
-                }
-                const donorRegsDataString = JSON.stringify(donorRegsData);
-                const res = await axios.post("http://localhost:8000/getUserNonce", {
-                    address
-                });
-                if (res.status == 200) {
-                    console.log("Fetched nonce", res.data);
-                    const retrievedData = res.data;
-                    setNonce(retrievedData.nonce);
-                }
-                else if (res.status == 404) {
-                    console.log("Nonce not found");
-                }
-                else {
-                    console.log("Internal Server Error");
-                }
-                const sodium = await SodiumPlus.auto();
-                console.log("Nonce", nonce);
-                const cipherText = await sodium.crypto_box(donorRegsDataString, nonce, secK, patientPubK);
-                console.log("Cipher", cipherText);
-                console.log("Type of ciphertest", typeof cipherText);
-                const blob = new Blob([JSON.stringify(cipherText)], { type: 'application/json' });
-                const cid = await client.add(blob);
-                console.log("CID of Donor Registration:", cid.path);
-                const trxDataStorage = await createEthereumContract();
-                const storeIPFS = await trxDataStorage.populateTransaction.donorStoreIPFS(uniqueId, cid.path);
-                const trx = {
-                    to: contractAddress,
-                    data: storeIPFS.data
-                }
-                console.log("Jakayw", trx);
-                const transactionArray = [];
-                transactionArray.push(trx);
-                const userOp = await smartWallet2.buildUserOp(transactionArray, {
-                    params: {
-                        sessionSigner: sessionSigner,
-                        sessionValidationModule: abiSVMAddress,
-                    },
-                });
-
-                const userOpResponse = await smartWallet2.sendUserOp(userOp, {
-                    sessionSigner: sessionSigner,
-                    sessionValidationModule: abiSVMAddress,
-                });
-                console.log("Store IPFS userOp", userOpResponse);
-                const userOpReceipt = await userOpResponse.wait();
-                console.log("Strore IPFS userOPReceipt", userOpReceipt);
-                if (userOpReceipt.success == "true") {
-                    const approved = await trxDataStorage.populateTransaction.setStatus(uniqueId, true);
+                const threshold = await transactionContract.minimumThreshold(approvedVotes);
+                console.log("Threshold type", typeof threshold);
+                //Check the minimum threshold required
+                if (!threshold) {
+                    console.log("Inside threshold");
+                    let donorRegsData;
+                    if (userData.type == "Living Donor") {
+                        donorRegsData = {
+                            donorName: userData.donorName,
+                            organ: userData.selectedOrgan,
+                            donorAddress: userData.donorAddress,
+                            donorPhnNumber: userData.donorPhnNumber,
+                            donorUniqueId: userData.uniqueId,
+                            idProofBuff: idProofBuff,
+                            idProofBolb: idProofBlob,
+                            medProofBuff: medProofBuff,
+                            medProofBolb: medProofBlob,
+                            nocProofBuff: nocProofBuff,
+                            nocProffBlob: nocProffBlob,
+                            recipientName: userData.recipientName,
+                            recipientRelation: userData.receiptRelation,
+                            typeOfDonation: userData.type,
+                            approveStatus: "success"
+                        }
+                    }
+                    else if (userData.type == "Brain Death Donor") {
+                        donorRegsData = {
+                            donorName: userData.donorName,
+                            organ: userData.selectedOrgan,
+                            donorAddress: userData.donorAddress,
+                            donorPhnNumber: userData.donorPhnNumber,
+                            donorUniqueId: userData.uniqueId,
+                            idProofBuff: idProofBuff,
+                            idProofBolb: idProofBlob,
+                            medProofBuff: medProofBuff,
+                            medProofBolb: medProofBlob,
+                            nocProofBuff: nocProofBuff,
+                            nocProffBlob: nocProffBlob,
+                            bsdcProofBuff: bsdcProofBuff,
+                            bsdcProofBlob: bsdcProofBlob,
+                            donorRelation: userData.donorRelation,
+                            typeOfDonation: userData.type,
+                            approveStatus: "success"
+                        }
+                    }
+                    else {
+                        console.log("Couldn't set data to IPFS");
+                    }
+                    const donorRegsDataString = JSON.stringify(donorRegsData);
+                    console.log("Address", address);
+                    const res = await axios.post("http://localhost:8000/getUserNonce", {
+                        address
+                    });
+                    console.log("RES NONCE", res);
+                    let nonce;
+                    if (res.data !== 404) {
+                        console.log("Fetched nonce", res.data);
+                        nonce = Buffer.from(res.data.nonce);
+                    }
+                    else if (res.status == 404) {
+                        console.log("Nonce not found");
+                    }
+                    else {
+                        console.log("Internal Server Error");
+                    }
+                    const sodium = await SodiumPlus.auto();
+                    console.log("Nonce", nonce);
+                    const cipherText = await sodium.crypto_box(donorRegsDataString, nonce, secK, patientPubK);
+                    console.log("Cipher", cipherText);
+                    console.log("Type of ciphertest", typeof cipherText);
+                    const blob = new Blob([JSON.stringify(cipherText)], { type: 'application/json' });
+                    const cid = await client.add(blob);
+                    console.log("CID of Donor Registration:", cid.path);
+                    const trxDataStorage = await createEthereumContract();
+                    const storeIPFS = await trxDataStorage.populateTransaction.donorStoreIPFS(uniqueId, cid.path);
                     const trx = {
                         to: contractAddress,
-                        data: approved.data
+                        data: storeIPFS.data
+                    }
+                    console.log("Jakayw", trx);
+                    const transactionArray = [];
+                    transactionArray.push(trx);
+                    const userOp = await smartWallet2.buildUserOp(transactionArray, {
+                        params: {
+                            sessionSigner: sessionSigner,
+                            sessionValidationModule: abiSVMAddress,
+                        },
+                    });
+
+                    const userOpResponse = await smartWallet2.sendUserOp(userOp, {
+                        sessionSigner: sessionSigner,
+                        sessionValidationModule: abiSVMAddress,
+                    });
+                    console.log("Store IPFS userOp", userOpResponse);
+                    const userOpReceipt = await userOpResponse.wait();
+                    console.log("Strore IPFS userOPReceipt", userOpReceipt);
+                    if (userOpReceipt.success == "true") {
+                        const approved = await trxDataStorage.populateTransaction.setStatus(uniqueId, true);
+                        const trx = {
+                            to: contractAddress,
+                            data: approved.data
+                        }
+                        console.log("Jakayw", trx);
+                        const transactionArray = [trx];
+                        const userOp2 = await smartWallet2.sendTranscation(transactionArray, {
+                            params: {
+                                sessionSigner: sessionSigner,
+                                sessionValidationModule: abiSVMAddress,
+                            }
+                        });
+                        console.log("Approved userOP2", userOp2);
+                        const userOp2Receipt = await userOp2.wait();
+                        console.log("Approved userOp2Receipt", userOp2Receipt);
+                        if (userOp2Receipt.success == "true") {
+                            console.log("Assign approved");
+                        }
+                        else {
+                            console.log("Couldn't assign approved");
+                        }
+                    }
+                    else {
+                        console.log("COULDN'T STORE IN IPFS");
+                    }
+                }
+                else {
+                    const trxDataStorage = await createEthereumContract();
+                    const rejected = await trxDataStorage.populateTransaction.setStatus(uniqueId, false);
+                    const trx = {
+                        to: contractAddress,
+                        data: rejected.data
                     }
                     console.log("Jakayw", trx);
                     const transactionArray = [trx];
-                    const userOp2 = await smartWallet2.sendTranscation(transactionArray, {
+                    const userOp = await smartWallet2.sendTranscation(transactionArray, {
                         params: {
                             sessionSigner: sessionSigner,
                             sessionValidationModule: abiSVMAddress,
                         }
                     });
-                    console.log("Approved userOP2", userOp2);
-                    const userOp2Receipt = await userOp2.wait();
-                    console.log("Approved userOp2Receipt", userOp2Receipt);
-                    if (userOp2Receipt.success == "true") {
-                        console.log("Assign approved");
+                    const userOpReceipt = await userOp.wait();
+                    console.log("Approved userOp2Receipt", userOpReceipt);
+                    if (userOpReceipt.success == "true") {
+                        console.log("REJECT DONE");
                     }
                     else {
-                        console.log("Couldn't assign approved");
+                        console.log("REVERTED in REJECTED");
                     }
-                }
-                else {
-                    console.log("COULDN'T STORE IN IPFS");
                 }
             }
             else {
-                const trxDataStorage = await createEthereumContract();
-                const rejected = await trxDataStorage.populateTransaction.setStatus(uniqueId, false);
-                const trx = {
-                    to: contractAddress,
-                    data: rejected.data
-                }
-                console.log("Jakayw", trx);
-                const transactionArray = [trx];
-                const userOp = await smartWallet2.sendTranscation(transactionArray, {
-                    params: {
-                        sessionSigner: sessionSigner,
-                        sessionValidationModule: abiSVMAddress,
-                    }
-                });
-                const userOpReceipt = await userOp.wait();
-                console.log("Approved userOp2Receipt", userOpReceipt);
-                if (userOpReceipt.success == "true") {
-                    console.log("REJECT DONE");
-                }
-                else {
-                    console.log("REVERTED in REJECTED");
-                }
+                console.log("Not yet ended");
             }
         } catch (error) {
             console.log("Error in IPFS store", error);
@@ -601,7 +660,16 @@ function Admin() {
         }
     }
 
-    async function startVote(donorData, smartWallet2) {
+    function bscPDF(bscUrl) {
+        if (bscUrl) {
+            window.open(bscUrl, "_blank");
+        }
+        else {
+            console.log("No NOC provided");
+        }
+    }
+
+    async function startVote(donorData, smartWallet2, smartWalletAddress, provider) {
         donorData.map(async (donordata) => {
             if (!donordata.voteStarted && !donordata.voteEnd) {
                 const uniqueId = donordata.uniqueId;
@@ -615,16 +683,16 @@ function Admin() {
                 }
                 const sessionSigner = new ethers.Wallet(sessionKeyPrivKey, provider);
                 console.log("sessionSigner", sessionSigner);
-
+                console.log("SmartWalletAddress", smartWalletAddress);
                 // generate sessionModule
                 const sessionModule = await createSessionKeyManagerModule({
                     moduleAddress: DEFAULT_SESSION_KEY_MANAGER_MODULE,
-                    smartAccountAddress: smartWalletAddress2,
+                    smartAccountAddress: smartWalletAddress,
                 });
                 console.log("Session Module", sessionModule);
                 // set active module to sessionModule
                 console.log("Smart Wallet", smartWallet2);
-                smartWallet2 = await smartWallet2.setActiveValidationModule(sessionModule);
+                smartWallet2 = smartWallet2.setActiveValidationModule(sessionModule);
                 console.log("Balance", await smartWallet2.getBalances());
                 const transactionContractVote = await createEthereumContractVote();
                 const startTime = Date.now();
@@ -634,11 +702,11 @@ function Admin() {
                     data: data,
                 };
 
-                console.log("Jakayw");
                 const transactionArray = [];
                 transactionArray.push(tx);
+                console.log("Jakayw");
                 try {
-                    let userOp = await smartWallet2.buildUserOp(transactionArray, {
+                    const userOp = await smartWallet2.buildUserOp(transactionArray, {
                         params: {
                             sessionSigner: sessionSigner,
                             sessionValidationModule: abiSVMAddress,
@@ -675,7 +743,7 @@ function Admin() {
                     else
                         console.log("REVERTED");
                 } catch (error) {
-                    console.log("Could start vote", error);
+                    console.log("Couldn't start vote", error);
                 }
             }
         })
@@ -712,13 +780,15 @@ function Admin() {
                                 <th>Type</th>
                                 <th>Donor Name</th>
                                 <th>Recipient Name</th>
+                                <th>Reltion with Recipient</th>
                                 <th>Reltion with Donor</th>
                                 <th>Organ</th>
                                 <th>Donor's Address</th>
                                 <th>Phone Number</th>
                                 <th>Donor's Id Proof</th>
                                 <th>Donor's Medical Record</th>
-                                <th>Donor's NOC</th>
+                                <th>NOC</th>
+                                <th>Brain Stem Certificate</th>
                                 <th>Time</th>
                             </tr>
                         </thead>
@@ -727,14 +797,16 @@ function Admin() {
                                 <tr key={index}>
                                     <td>{patientData.type}</td>
                                     <td>{patientData.donorName}</td>
-                                    <td>{patientData.recipientName}</td>
-                                    <td>{patientData.relationship}</td>
+                                    <td>{patientData.recipientName ? patientData.recipientName : "N/A"}</td>
+                                    <td>{patientData.relationship ? patientData.relationship : "N/A"}</td>
+                                    <td>{patientData.donorRelation ? patientData.donorRelation : "N/A"}</td>
                                     <td>{patientData.selectedOrgan}</td>
                                     <td>{patientData.donorAddress}</td>
                                     <td>{patientData.donorPhnNumber}</td>
-                                    <td><button onClick={() => idPDF(patientData.idProofUrl)}>View Id proof</button></td>
-                                    <td><button onClick={() => medPDF(patientData.medicalRecordUrl)}>View Medical Data</button></td>
-                                    <td><button onClick={() => nocPDF(patientData.nocUrl)}>View NOC</button></td>
+                                    <td>{patientData.idProofUrl ? (<button onClick={() => idPDF(patientData.idProofUrl)}>View Id proof</button>) : "---"}</td>
+                                    <td>{patientData.medicalRecordUrl ? (<button onClick={() => medPDF(patientData.medicalRecordUrl)}>View Medical Data</button>) : "---"}</td>
+                                    <td>{patientData.nocUrl ? (<button onClick={() => nocPDF(patientData.nocUrl)}>View NOC</button>) : "---"}</td>
+                                    <td>{patientData.bscUrl ? (<button onClick={() => bscPDF(patientData.bscUrl)}>Brain Stem Certificate</button>) : "N/A"}</td>
                                     <td>{patientData.voteStarted ? (patientData.voteEnd ? over : timer(patientData.minutes, patientData.seconds)) : (notStarted)}</td>
                                 </tr>
                             ))}
