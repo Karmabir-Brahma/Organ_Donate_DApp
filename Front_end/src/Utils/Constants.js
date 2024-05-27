@@ -2,7 +2,8 @@ import abi from "./ContractAbi.json"
 import { ethers } from "ethers";
 //0xBC73daf94A1d404509431C046b11992CaB069c9f
 // 0x04F2b68f3B8c85dF5Ae2bEc84F6B995dB6c773B3
-export const contractAddress = "0x51e8dece1f94115d2Eb78B639603eB54AD5F2e34";
+//0x51e8dece1f94115d2Eb78B639603eB54AD5F2e34
+export const contractAddress = "0x5c07d1aD4d9c3531b3f92a58b70b95E80DE9177b";
 export const contractABI = abi.abi;
 export async function createEthereumContract() {
     try {

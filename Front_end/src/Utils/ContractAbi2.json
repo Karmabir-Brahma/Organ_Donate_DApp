@@ -8,6 +8,19 @@
                     "type": "string"
                 }
             ],
+            "name": "createTransplantRequest",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "string",
+                    "name": "_uniqueId",
+                    "type": "string"
+                }
+            ],
             "name": "endElection",
             "outputs": [],
             "stateMutability": "nonpayable",
@@ -32,7 +45,53 @@
             "type": "function"
         },
         {
-            "inputs": [],
+            "inputs": [
+                {
+                    "internalType": "address",
+                    "name": "_mandalOfficer",
+                    "type": "address"
+                },
+                {
+                    "internalType": "address",
+                    "name": "_policeOfficer",
+                    "type": "address"
+                },
+                {
+                    "internalType": "address",
+                    "name": "_seniorDoctor",
+                    "type": "address"
+                },
+                {
+                    "internalType": "address",
+                    "name": "_hodPathology",
+                    "type": "address"
+                },
+                {
+                    "internalType": "address",
+                    "name": "_authorizationCommittee",
+                    "type": "address"
+                },
+                {
+                    "internalType": "address",
+                    "name": "_hospital",
+                    "type": "address"
+                },
+                {
+                    "internalType": "address",
+                    "name": "_transplantTeam",
+                    "type": "address"
+                },
+                {
+                    "internalType": "address",
+                    "name": "_deputyCommissioner",
+                    "type": "address"
+                },
+                {
+                    "internalType": "address",
+                    "name": "_appropriateAuthority",
+                    "type": "address"
+                }
+            ],
             "stateMutability": "nonpayable",
             "type": "constructor"
         },
@@ -47,11 +106,6 @@
                     "internalType": "address",
                     "name": "_address",
                     "type": "address"
-                },
-                {
-                    "internalType": "string",
-                    "name": "_voterId",
-                    "type": "string"
                 },
                 {
                     "internalType": "string",
@@ -75,19 +129,26 @@
             "type": "function"
         },
         {
-            "inputs": [
-                {
-                    "internalType": "string",
-                    "name": "_uniqueId",
-                    "type": "string"
-                }
-            ],
-            "name": "approveVotes",
+            "inputs": [],
+            "name": "appropriateAuthority",
             "outputs": [
                 {
-                    "internalType": "uint256",
+                    "internalType": "address",
                     "name": "",
-                    "type": "uint256"
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "authorizationCommittee",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
                 }
             ],
             "stateMutability": "view",
@@ -189,19 +250,13 @@
             "type": "function"
         },
         {
-            "inputs": [
-                {
-                    "internalType": "string",
-                    "name": "_uniqueId",
-                    "type": "string"
-                }
-            ],
-            "name": "countVote",
+            "inputs": [],
+            "name": "deputyCommissioner",
             "outputs": [
                 {
-                    "internalType": "uint256",
+                    "internalType": "address",
                     "name": "",
-                    "type": "uint256"
+                    "type": "address"
                 }
             ],
             "stateMutability": "view",
@@ -228,16 +283,6 @@
                     "type": "uint256"
                 },
                 {
-                    "internalType": "uint256",
-                    "name": "approve",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "reject",
-                    "type": "uint256"
-                },
-                {
                     "internalType": "bool",
                     "name": "started",
                     "type": "bool"
@@ -252,27 +297,163 @@
             "type": "function"
         },
         {
-            "inputs": [
-                {
-                    "internalType": "string",
-                    "name": "_func",
-                    "type": "string"
-                }
-            ],
-            "name": "getSelector",
+            "inputs": [],
+            "name": "hodPathology",
             "outputs": [
                 {
-                    "internalType": "bytes4",
+                    "internalType": "address",
                     "name": "",
-                    "type": "bytes4"
+                    "type": "address"
                 }
             ],
-            "stateMutability": "pure",
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "hospital",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
             "type": "function"
         },
         {
             "inputs": [],
             "name": "i_owner",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "lastResetTime",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "mandalOfficer",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "policeOfficer",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "seniorDoctor",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "string",
+                    "name": "",
+                    "type": "string"
+                }
+            ],
+            "name": "transplantRequests",
+            "outputs": [
+                {
+                    "internalType": "bool",
+                    "name": "mandalOfficerApproved",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "bool",
+                    "name": "policeOfficerApproved",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "bool",
+                    "name": "seniorDoctorApproved",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "bool",
+                    "name": "hodPathologyApproved",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "bool",
+                    "name": "authorizationCommitteeApproved",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "bool",
+                    "name": "hospitalApproved",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "bool",
+                    "name": "transplantTeamApproved",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "bool",
+                    "name": "deputyCommissionerApproved",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "bool",
+                    "name": "appropriateAuthorityApproved",
+                    "type": "bool"
+                },
+                {
+                    "internalType": "bool",
+                    "name": "completed",
+                    "type": "bool"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "transplantTeam",
             "outputs": [
                 {
                     "internalType": "address",
@@ -319,11 +500,6 @@
                 },
                 {
                     "internalType": "string",
-                    "name": "voterId",
-                    "type": "string"
-                },
-                {
-                    "internalType": "string",
                     "name": "voterName",
                     "type": "string"
                 },
@@ -331,6 +507,19 @@
                     "internalType": "string",
                     "name": "choosed",
                     "type": "string"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "yearlyTransplantCount",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
                 }
             ],
             "stateMutability": "view",
